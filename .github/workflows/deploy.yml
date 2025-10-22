@@ -12,24 +12,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup SSH key
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          SSH_HOST: ${{ secrets.SSH_HOST }}
-        run: |
-          echo "Setting up SSH key..."
-          mkdir -p ~/.ssh
-          # use printf to preserve line breaks
-          printf "%s" "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
-          echo "SSH key and known_hosts setup complete."
-          echo "Listing ~/.ssh contents for debug:"
-          ls -l ~/.ssh
-          echo "First few lines of private key (for format check):"
-          head -5 ~/.ssh/id_ed25519
-          echo "Last few lines of private key (for format check):"
-          tail -3 ~/.ssh/id_ed25519
+      # - name: Setup SSH key
+      #   env:
+      #     SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      #     SSH_HOST: ${{ secrets.SSH_HOST }}
+      #   run: |
+      #     echo "Setting up SSH key..."
+      #     mkdir -p ~/.ssh
+      #     # use printf to preserve line breaks
+      #     printf "%s" "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+      #     chmod 600 ~/.ssh/id_ed25519
+      #     ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+      #     echo "SSH key and known_hosts setup complete."
+      #     echo "Listing ~/.ssh contents for debug:"
+      #     ls -l ~/.ssh
+      #     echo "First few lines of private key (for format check):"
+      #     head -5 ~/.ssh/id_ed25519
+      #     echo "Last few lines of private key (for format check):"
+      #     tail -3 ~/.ssh/id_ed25519
 
       - name: Test SSH connection
         env:
