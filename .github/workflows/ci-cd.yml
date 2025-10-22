@@ -7,7 +7,6 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
-
     strategy:
       matrix:
         node-version: [18.x, 20.x]
@@ -23,24 +22,27 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-      
-      - name: Install Jest
-        run: npm jest supertest
+
+      - name: Install Jest and Supertest globally (if needed)
+        run: npm install --save-dev jest supertest
 
       - name: Run tests
-        run: npm test
+        run: |
+          mkdir -p test-results
+          npx jest --ci --reporters=default --reporters=jest-junit --outputDirectory=test-results
+        env:
+          CI: true
 
-      - name: Upload test results (optional)
+      - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results
-          path: |
-            coverage
-            jest-results.xml
+          path: test-results
+
   cd:
     runs-on: self-hosted
-    needs: ci 
+    needs: ci
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -51,15 +53,11 @@ jobs:
         run: |
           echo "Setting up SSH key..."
           mkdir -p ~/.ssh
-
-          # Properly restore newlines (\n → real newline)
           echo "$SSH_PRIVATE_KEY" | tr -d '\r' | sed 's/\\n/\n/g' > ~/.ssh/id_ed25519
-
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
           echo "SSH key fixed and ready"
           head -2 ~/.ssh/id_ed25519
-
 
       - name: Test SSH connection
         env:
@@ -67,7 +65,7 @@ jobs:
           SSH_HOST: ${{ secrets.SSH_HOST }}
         run: |
           echo "Testing SSH connection..."
-          ssh -vvv -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no \
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no \
             "$SSH_USERNAME@$SSH_HOST" \
             "echo 'GitHub Actions connected successfully'"
           echo "SSH connection test finished."
@@ -82,6 +80,7 @@ jobs:
           YELLOW='\033[1;33m'
           BLUE='\033[0;34m'
           NC='\033[0m'
+
           echo "${BLUE}Starting Docker deployment..."
           ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no \
             "$SSH_USERNAME@$SSH_HOST" "
