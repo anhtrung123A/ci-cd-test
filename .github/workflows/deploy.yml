@@ -15,38 +15,49 @@ jobs:
       - name: Setup SSH key
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
         run: |
-          echo "🔧 Setting up SSH key..."
+          echo "Setting up SSH key..."
           mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          # use printf to preserve line breaks
+          printf "%s" "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
-          echo "✅ SSH key and known_hosts setup complete."
-          echo "🧩 Listing .ssh contents for debug:"
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+          echo "SSH key and known_hosts setup complete."
+          echo "Listing ~/.ssh contents for debug:"
           ls -l ~/.ssh
-          echo "🔑 Showing first few lines of private key (for format check):"
+          echo "First few lines of private key (for format check):"
           head -5 ~/.ssh/id_ed25519
+          echo "Last few lines of private key (for format check):"
+          tail -3 ~/.ssh/id_ed25519
 
       - name: Test SSH connection
+        env:
+          SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
         run: |
-          echo "🔗 Testing SSH connection..."
-          ssh -v -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no \
-            ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} \
-            "echo '✅ GitHub Actions connected successfully'"
-          echo "🟢 SSH connection test finished."
+          echo "Testing SSH connection..."
+          ssh -vvv -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no \
+            "$SSH_USERNAME@$SSH_HOST" \
+            "echo 'GitHub Actions connected successfully'"
+          echo "SSH connection test finished."
 
       - name: Build and deploy container
+        env:
+          SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
         run: |
-          echo "🚀 Starting Docker deployment..."
+          echo "Starting Docker deployment..."
           ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no \
-            ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }} "
-              cd /home/lts/actions-runner/_work/ci-cd-test/ci-cd-test || exit 1;
-              echo '📂 In project directory: $(pwd)';
-              echo '🧹 Stopping old containers...';
-              docker-compose down;
-              echo '⚙️ Building and starting containers...';
-              docker-compose up -d --build;
-              echo '✅ Deployment complete!';
+            "$SSH_USERNAME@$SSH_HOST" "
+              set -e
+              echo 'Switching to project directory...'
+              cd /home/lts/actions-runner/_work/ci-cd-test/ci-cd-test || exit 1
+              echo 'Stopping old containers...'
+              docker-compose down || true
+              echo 'Building and starting containers...'
+              docker-compose up -d --build
+              echo 'Deployment complete!'
               docker ps
             "
-          echo "🟩 Remote deployment finished."
+          echo "Remote deployment finished."
