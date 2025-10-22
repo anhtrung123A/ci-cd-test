@@ -19,6 +19,8 @@
   },
   "homepage": "https://github.com/anhtrung123A/ci-cd-test#readme",
   "dependencies": {
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "jest": "^30.2.0",
+    "supertest": "^7.1.4"
   }
 }

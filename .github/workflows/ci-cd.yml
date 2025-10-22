@@ -23,6 +23,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+      
+      - name: Install Jest
+        run: npm jest supertest
 
       - name: Run tests
         run: npm test
