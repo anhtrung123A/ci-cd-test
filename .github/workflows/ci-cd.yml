@@ -23,8 +23,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Jest and Supertest globally (if needed)
-        run: npm install --save-dev jest supertest
+      - name: Install Jest and reporters
+        run: npm install --save-dev jest supertest jest-junit
 
       - name: Run tests
         run: |
