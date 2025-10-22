@@ -19,7 +19,7 @@ app.get("/api/info", (req, res) => {
 app.post("/login", (req, res) => {
   const fakeUser = {
     username: "admin",
-    password: "password123"
+    password: "password1234"
   };
   
   const { username, password } = req.body;
