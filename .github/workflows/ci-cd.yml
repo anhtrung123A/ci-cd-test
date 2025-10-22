@@ -1,0 +1,97 @@
+name: CI/CD Pipeline
+
+on:
+  pull:
+    branches: [ "main" ]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Jest and reporters
+        run: npm install --save-dev jest supertest jest-junit
+
+      - name: Run tests
+        run: |
+          mkdir -p test-results
+          npx jest --ci --reporters=default --reporters=jest-junit --outputDirectory=test-results
+        env:
+          CI: true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results
+
+  cd:
+    runs-on: self-hosted
+    needs: ci
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          echo "Setting up SSH key..."
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" | tr -d '\r' | sed 's/\\n/\n/g' > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+          echo "SSH key fixed and ready"
+          head -2 ~/.ssh/id_ed25519
+
+      - name: Test SSH connection
+        env:
+          SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+        run: |
+          echo "Testing SSH connection..."
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no \
+            "$SSH_USERNAME@$SSH_HOST" \
+            "echo 'GitHub Actions connected successfully'"
+          echo "SSH connection test finished."
+
+      - name: Build and deploy container
+        env:
+          SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+        run: |
+          RED='\033[0;31m'
+          GREEN='\033[0;32m'
+          YELLOW='\033[1;33m'
+          BLUE='\033[0;34m'
+          NC='\033[0m'
+
+          echo "${BLUE}Starting Docker deployment..."
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no \
+            "$SSH_USERNAME@$SSH_HOST" "
+              set -e
+              echo '${YELLOW}Switching to project directory...'
+              cd /home/lts/actions-runner/_work/ci-cd-test/ci-cd-test || exit 1
+              echo '${RED}Stopping old containers...'
+              docker-compose down || true
+              echo '${GREEN}Building and starting containers...'
+              docker-compose up -d --build
+              echo '${GREEN}Deployment complete!'
+              docker ps
+            "
+          echo "${GREEN}Remote deployment finished."
